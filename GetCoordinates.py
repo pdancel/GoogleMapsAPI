@@ -34,8 +34,8 @@ logger.addHandler(ch)
 
 
 # Parameters
-server = 'WASPUSMJ040EN0.WKS.JNJ.COM\SPA_MAIN'
-db = 'ASP_QA'
+server = 'Insert Server Name Here'
+db = 'Insert Database Name here'
 
 # Create the connection
 conn = pyodbc.connect('DRIVER={SQL Server};SERVER=' + server + ';DATABASE=' + db + ';Trusted_Connection=yes')
@@ -43,34 +43,21 @@ conn = pyodbc.connect('DRIVER={SQL Server};SERVER=' + server + ';DATABASE=' + db
 # query db
 sql = """
 
-SELECT [SITE_UCN]
-      ,[SITE_ACCOUNT]
-      ,[ADDR_ST_NAME]
-      ,[CITY]
-      ,[STATE]
-      ,[ZIP]
-      ,ADDR_ST_NAME +', ' + CITY + ', ' + [STATE] + ', ' + [ZIP] + ', ' + 'USA' as [INPUT_ADDRESS]
-  FROM [ASP_QA].[dbo].[qryCust_NEED_COORDINATES]
-  WHERE ADDR_ST_NAME NOT LIKE 'misc%'
+SELECT *
+FROM TABLE
 
 
 
 
 """
 df = pd.read_sql(sql, conn)
-df
 
 
-# In[45]:
-
-
+# View the number of rows in the DataFrame
 print(str(df.shape[0]) + ' rows')
 
 
 # # Create a list of addresses so that the Google API can iterate over it
-
-# In[46]:
-
 
 addresses_list = df['INPUT_ADDRESS'].values.tolist()
 
@@ -78,19 +65,13 @@ addresses_list = df['INPUT_ADDRESS'].values.tolist()
 addresses = list(set(addresses_list))
 
 
-# In[48]:
-
 
 print(str(len(addresses)) + ' distinct addresses')
 
-
-# # Now it's time to set up the environment so Google can do its thang!
-
-# In[49]:
-
+# Now it's time to set up the environment so Google can do its thang!
 
 # Set your Google API key here. 
-API_KEY = 'AIzaSyChaKZKgV3tYs0T1BQcW_lPS56l77bMUWs'
+API_KEY = 'Insert Google API Key'
 
 # Backoff time sets how many minutes to wait between google pings when your API limit is hit
 BACKOFF_TIME = 1
@@ -108,9 +89,6 @@ RETURN_FULL_RESULTS = False
 
 
 # # Create a function that will get desired google results
-
-# In[50]:
-
 
 def get_google_results(address, api_key=None, return_full_response=False):
 
@@ -152,9 +130,6 @@ def get_google_results(address, api_key=None, return_full_response=False):
 
 
 # # Use function to iterate through the address list
-
-# In[51]:
-
 
 # Create a list to hold results
 results = []
@@ -203,30 +178,16 @@ logger.info("Finished geocoding all addresses")
 
 # Convert the list of geocoded results to a DataFrame
 results_df = pd.DataFrame(results)
-results_df
 
-
-# In[53]:
-
-
+# View the shape of the results DataFrame
 results_df.shape
-
-
-# In[54]:
-
 
 # # If you want to see the results that failed
 # results_df[results_df['status']!='OK']
 
 
-# In[55]:
-
-
 # View the columns names
 results_df.columns
-
-
-# In[56]:
 
 
 # Reorder the Columns to resemble the database
@@ -235,38 +196,22 @@ results_df_updated = results_df[['latitude', 'longitude', 'input_string']]
 results_df_updated.rename(columns={'input_string':'input_address'}, inplace=True)
 
 
-# In[57]:
-
-
 results_df_updated.head()
-
-
-# In[58]:
 
 
 # Fill any null values with blank spaces
 results_df_updated=results_df_updated.fillna('')
 
 
-# # Now it's time to merge results_df_updated onto the original df
-
-# In[59]:
-
-
+# Now it's time to merge results_df_updated onto the original df
 df_merge = pd.merge(left=df, right=results_df_updated, how = 'left', left_on = ['INPUT_ADDRESS'],right_on = ['input_address'])
-df_merge
 
-
-# In[60]:
 
 
 df_merge.shape
 
 
 # # Make the final DataFrame exactly the same as in SQL Server for a clean upload
-
-# In[61]:
-
 
 # Create and ID Column
 df_merge['ID']=''
@@ -278,36 +223,22 @@ df_merge['ID']=''
 df_final = df_merge[['ADDR_ST_NAME', 'SITE_ACCOUNT','latitude','longitude','SITE_UCN','ZIP', 'ID']]
 
 
-# In[64]:
-
-
 df_final.rename(columns={'SITE_ACCOUNT':'CUST'}, inplace=True)
 df_final.rename(columns={'SITE_UCN':'UCN'}, inplace=True)
 
 
-# In[65]:
 
-
-df_final
-
-
-# # Write results to SQL Server
-
-# In[66]:
-
+# Write results to SQL Server
 
 import sqlalchemy
 from sqlalchemy import create_engine
 import urllib
 
-params = urllib.parse.quote_plus(r'DRIVER={SQL Server};SERVER=WASPUSMJ040EN0.WKS.JNJ.COM\SPA_MAIN;DATABASE=ASP_QA;Trusted_Connection=yes')
+params = urllib.parse.quote_plus(r'DRIVER={SQL Server};SERVER=<INSERT_SERVER_NAME>;DATABASE=<INSERT_DB_NAME>;Trusted_Connection=yes')
 conn_str = 'mssql+pyodbc:///?odbc_connect={}'.format(params)
 engine = create_engine(conn_str)
 
 
-# In[67]:
-
-
-# Append DataFrame to the existing table in ASP_QA
-df_final.to_sql(con=engine, name='stgCoordinates', if_exists='replace', index=False, chunksize=75)
+# Append DataFrame to the existing table in SQL Server
+df_final.to_sql(con=engine, name='insert_table_name', if_exists='replace', index=False, chunksize=75)
 
