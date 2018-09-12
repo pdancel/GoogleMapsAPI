@@ -1,12 +1,3 @@
-
-# coding: utf-8
-
-# # Import Libraries 
-# <br> These are ultimately other python scripts located in the python directory that you are referencing so that they can do a lot of the heavy lifting tasks. 
-
-# In[11]:
-
-
 # For Working with DataFrames
 import pandas as pd
 import numpy as np
